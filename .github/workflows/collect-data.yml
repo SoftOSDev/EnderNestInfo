@@ -8,9 +8,14 @@ on:
 jobs:
   collect:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
     steps:
       - name: Checkout
         uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
         
       - name: Fetch Server Data
         run: |
@@ -18,14 +23,15 @@ jobs:
           import json
           import urllib.request
           import urllib.error
+          import gzip
           import os
           import time
-          from datetime import datetime
+          from datetime import datetime, timezone
           
-          # API 地址
-          api_url = 'https://list.mczfw.com/api/mc.l-w.top'
+          # 新的 API 地址
+          api_url = 'https://api.mcsrvstat.us/2/mc.l-w.top'
           
-          # 添加请求头（模拟浏览器）
+          # 请求头
           headers = {
               'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
               'Accept': 'application/json, text/plain, */*',
@@ -35,31 +41,54 @@ jobs:
           }
           
           max_retries = 3
-          retry_delay = 5  # 秒
+          retry_delay = 5
           
           for attempt in range(max_retries):
               try:
                   print(f"尝试连接 API (第 {attempt + 1}/{max_retries} 次)...")
                   
-                  # 创建请求
                   req = urllib.request.Request(api_url, headers=headers)
                   
-                  # 发送请求
                   with urllib.request.urlopen(req, timeout=15) as response:
-                      data = json.loads(response.read().decode('utf-8'))
+                      raw_data = response.read()
+                      
+                      # 解压 gzip
+                      if response.headers.get('Content-Encoding') == 'gzip':
+                          print("   检测到 gzip 压缩，正在解压...")
+                          raw_data = gzip.decompress(raw_data)
+                      
+                      data = json.loads(raw_data.decode('utf-8'))
                   
-                  # 提取数据
-                  online = int(data.get('p', 0))
-                  max_online = int(data.get('mp', 0))
-                  ping = int(data.get('ping', 0))
-                  time_now = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
+                  # 检查服务器是否在线
+                  is_online = data.get('online', False)
+                  
+                  if is_online:
+                      # 从新的 API 结构提取数据
+                      online = data.get('players', {}).get('online', 0)
+                      max_online = data.get('players', {}).get('max', 0)
+                      version = data.get('version', 'Unknown')
+                      hostname = data.get('hostname', 'mc.l-w.top')
+                      
+                      print(f"✅ 服务器在线！")
+                      print(f"   版本: {version}")
+                      print(f"   地址: {hostname}")
+                  else:
+                      online = 0
+                      max_online = 0
+                      version = 'Offline'
+                      hostname = 'mc.l-w.top'
+                      print("⚠️  服务器离线")
+                  
+                  time_now = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
                   
                   # 创建新数据条目
                   new_entry = {
                       "time": time_now,
                       "online": online,
                       "max": max_online,
-                      "ping": ping
+                      "is_online": is_online,
+                      "version": version,
+                      "hostname": hostname
                   }
                   
                   # 读取现有数据
@@ -73,7 +102,7 @@ jobs:
                   # 添加新数据
                   all_data.append(new_entry)
                   
-                  # 保留最近3天的数据（约864条，每5分钟一条）
+                  # 保留最近3天的数据（约864条）
                   if len(all_data) > 864:
                       all_data = all_data[-864:]
                   
@@ -85,10 +114,8 @@ jobs:
                   print(f"   时间: {time_now}")
                   print(f"   在线: {online}")
                   print(f"   最大: {max_online}")
-                  print(f"   延迟: {ping}ms")
                   print(f"   总数据点: {len(all_data)}")
                   
-                  # 成功，跳出循环
                   break
                   
               except urllib.error.HTTPError as e:
@@ -98,25 +125,23 @@ jobs:
                       time.sleep(retry_delay)
                   else:
                       print("❌ 多次重试失败，使用默认数据")
-                      # 创建默认数据
-                      new_entry = {
-                          "time": datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ'),
-                          "online": 0,
-                          "max": 0,
-                          "ping": 0
-                      }
-                      # 如果文件不存在，创建空数组
                       if not os.path.exists('data.json'):
                           all_data = []
                       else:
                           with open('data.json', 'r', encoding='utf-8') as f:
                               all_data = json.load(f)
-                      all_data.append(new_entry)
+                      all_data.append({
+                          "time": datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
+                          "online": 0,
+                          "max": 0,
+                          "is_online": False,
+                          "version": "Unknown",
+                          "hostname": "mc.l-w.top"
+                      })
                       if len(all_data) > 864:
                           all_data = all_data[-864:]
                       with open('data.json', 'w', encoding='utf-8') as f:
                           json.dump(all_data, f, indent=2, ensure_ascii=False)
-                      # 不抛出错误，继续执行
                       
               except Exception as e:
                   print(f"⚠️  错误: {e}")
@@ -131,10 +156,12 @@ jobs:
                           with open('data.json', 'r', encoding='utf-8') as f:
                               all_data = json.load(f)
                       all_data.append({
-                          "time": datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ'),
+                          "time": datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
                           "online": 0,
                           "max": 0,
-                          "ping": 0
+                          "is_online": False,
+                          "version": "Unknown",
+                          "hostname": "mc.l-w.top"
                       })
                       if len(all_data) > 864:
                           all_data = all_data[-864:]
