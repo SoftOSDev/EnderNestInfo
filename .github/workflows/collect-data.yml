@@ -14,41 +14,75 @@ jobs:
         
       - name: Fetch Server Data
         run: |
-          # 获取当前时间
-          TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          # 使用 Python 脚本处理数据（更稳定）
+          python3 << 'EOF'
+          import json
+          import urllib.request
+          import os
+          from datetime import datetime
           
-          # 调用你的API
-          RESPONSE=$(curl -s 'https://list.mczfw.com/api/mc.l-w.top')
+          # API 地址
+          api_url = 'https://list.mczfw.com/api/mc.l-w.top'
           
-          # 提取数据
-          ONLINE=$(echo $RESPONSE | jq -r '.p // 0')
-          MAX=$(echo $RESPONSE | jq -r '.mp // 0')
-          PING=$(echo $RESPONSE | jq -r '.ping // 0')
-          
-          # 创建新数据条目
-          NEW_DATA="{\"time\":\"$TIME\",\"online\":$ONLINE,\"max\":$MAX,\"ping\":$PING}"
-          
-          # 读取现有数据或创建空数组
-          if [ -f data.json ]; then
-            OLD_DATA=$(cat data.json)
-          else
-            OLD_DATA="[]"
-          fi
-          
-          # 合并数据并保留最近3天的数据（约864条，每5分钟一条）
-          echo "$OLD_DATA" | jq --argjson new "$NEW_DATA" '
-            [. + [$new] | 
-             sort_by(.time) | 
-             .[-864:]]
-          ' > data.json
-          
-          # 显示数据
-          cat data.json
+          try:
+              # 获取数据
+              with urllib.request.urlopen(api_url, timeout=10) as response:
+                  data = json.loads(response.read().decode())
+              
+              # 提取数据
+              online = int(data.get('p', 0))
+              max_online = int(data.get('mp', 0))
+              ping = int(data.get('ping', 0))
+              time_now = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
+              
+              # 创建新数据条目
+              new_entry = {
+                  "time": time_now,
+                  "online": online,
+                  "max": max_online,
+                  "ping": ping
+              }
+              
+              # 读取现有数据
+              data_file = 'data.json'
+              if os.path.exists(data_file):
+                  with open(data_file, 'r', encoding='utf-8') as f:
+                      all_data = json.load(f)
+              else:
+                  all_data = []
+              
+              # 添加新数据
+              all_data.append(new_entry)
+              
+              # 保留最近3天的数据（约864条，每5分钟一条）
+              if len(all_data) > 864:
+                  all_data = all_data[-864:]
+              
+              # 保存数据
+              with open(data_file, 'w', encoding='utf-8') as f:
+                  json.dump(all_data, f, indent=2, ensure_ascii=False)
+              
+              print(f"✅ 数据采集成功！")
+              print(f"   时间: {time_now}")
+              print(f"   在线: {online}")
+              print(f"   最大: {max_online}")
+              print(f"   延迟: {ping}ms")
+              print(f"   总数据点: {len(all_data)}")
+              
+          except Exception as e:
+              print(f"❌ 错误: {e}")
+              # 如果出错但文件存在，保持原数据
+              if not os.path.exists('data.json'):
+                  # 创建空数组
+                  with open('data.json', 'w', encoding='utf-8') as f:
+                      json.dump([], f)
+              raise
+          EOF
           
       - name: Commit and Push
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add data.json
-          git commit -m "Update server data at $(date)" || exit 0
+          git diff --staged --quiet || git commit -m "📊 Update server data at $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
           git push
