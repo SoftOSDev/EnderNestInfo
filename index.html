@@ -268,17 +268,26 @@
         }
         
         // 更新显示信息
-        function updateDisplay() {
-            if (allData.length === 0) return;
-            
-            const latest = allData[allData.length - 1];
-            const maxOnline = Math.max(...allData.map(d => d.online));
-            
-            document.getElementById('currentOnline').textContent = latest.online;
-            document.getElementById('maxOnline').textContent = maxOnline;
-            document.getElementById('ping').textContent = latest.ping + 'ms';
-            document.getElementById('dataPoints').textContent = allData.length;
-        }
+        // 在 updateDisplay() 函数中
+function updateDisplay() {
+    if (allData.length === 0) return;
+    
+    const latest = allData[allData.length - 1];
+    const maxOnline = Math.max(...allData.map(d => d.online));
+    
+    document.getElementById('currentOnline').textContent = latest.online;
+    document.getElementById('maxOnline').textContent = maxOnline;
+    document.getElementById('ping').textContent = latest.is_online ? '在线' : '离线';
+    document.getElementById('dataPoints').textContent = allData.length;
+    
+    // 更新服务器状态指示器
+    const statusIndicator = document.querySelector('.info-card:nth-child(3) .value');
+    if (latest.is_online) {
+        statusIndicator.style.color = '#22c55e'; // 绿色
+    } else {
+        statusIndicator.style.color = '#ef4444'; // 红色
+    }
+}
         
         // 更新图表
         function updateChart() {
