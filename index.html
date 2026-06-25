@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MC服务器在线监控 - 3天历史数据</title>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: #fff;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+        }
+        
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .server-info {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            flex-wrap: wrap;
+            margin-top: 20px;
+        }
+        
+        .info-card {
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            padding: 20px 30px;
+            border-radius: 15px;
+            text-align: center;
+            min-width: 150px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+        }
+        
+        .info-card h3 {
+            font-size: 0.9em;
+            opacity: 0.8;
+            margin-bottom: 5px;
+        }
+        
+        .info-card .value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #00d9ff;
+        }
+        
+        .chart-container {
+            background: rgba(255,255,255,0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+            margin-bottom: 20px;
+        }
+        
+        #mainChart {
+            width: 100%;
+            height: 500px;
+        }
+        
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        button {
+            background: rgba(255,255,255,0.2);
+            border: 2px solid rgba(255,255,255,0.3);
+            color: #fff;
+            padding: 10px 25px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: all 0.3s;
+        }
+        
+        button:hover, button.active {
+            background: rgba(255,255,255,0.4);
+            border-color: #fff;
+            transform: translateY(-2px);
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 50px;
+            font-size: 1.2em;
+        }
+        
+        .error {
+            background: rgba(255,0,0,0.2);
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            margin: 20px 0;
+        }
+        
+        footer {
+            text-align: center;
+            margin-top: 30px;
+            opacity: 0.7;
+            font-size: 0.9em;
+        }
+        
+        @media (max-width: 768px) {
+            h1 { font-size: 1.8em; }
+            #mainChart { height: 350px; }
+            .info-card { min-width: 120px; padding: 15px 20px; }
+            .info-card .value { font-size: 1.5em; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎮 MC服务器在线监控</h1>
+            <p>实时查看服务器状态与3天历史数据</p>
+            <div class="server-info">
+                <div class="info-card">
+                    <h3>当前在线</h3>
+                    <div class="value" id="currentOnline">-</div>
+                </div>
+                <div class="info-card">
+                    <h3>最大在线</h3>
+                    <div class="value" id="maxOnline">-</div>
+                </div>
+                <div class="info-card">
+                    <h3>延迟</h3>
+                    <div class="value" id="ping">-</div>
+                </div>
+                <div class="info-card">
+                    <h3>数据点</h3>
+                    <div class="value" id="dataPoints">-</div>
+                </div>
+            </div>
+        </header>
+        
+        <div class="chart-container">
+            <div class="controls">
+                <button class="active" onclick="setRange(1)">24小时</button>
+                <button onclick="setRange(2)">2天</button>
+                <button onclick="setRange(3)">3天</button>
+                <button onclick="refreshData()">🔄 刷新</button>
+            </div>
+            <div id="mainChart"></div>
+        </div>
+        
+        <footer>
+            <p>数据每5分钟自动更新 | 最后更新: <span id="lastUpdate">-</span></p>
+            <p>服务器地址: mc.l-w.top</p>
+        </footer>
+    </div>
+
+    <script>
+        let chart;
+        let allData = [];
+        let currentRange = 3; // 默认显示3天
+        
+        // 初始化图表
+        function initChart() {
+            chart = echarts.init(document.getElementById('mainChart'));
+            
+            const option = {
+                backgroundColor: 'transparent',
+                tooltip: {
+                    trigger: 'axis',
+                    backgroundColor: 'rgba(0,0,0,0.8)',
+                    borderColor: '#00d9ff',
+                    textStyle: { color: '#fff' },
+                    formatter: function(params) {
+                        const data = params[0];
+                        return `<strong>${data.name}</strong><br/>` +
+                               `在线人数: ${data.value[1]}<br/>` +
+                               `最大在线: ${data.data.max}`;
+                    }
+                },
+                grid: {
+                    left: '3%',
+                    right: '4%',
+                    bottom: '3%',
+                    containLabel: true
+                },
+                xAxis: {
+                    type: 'time',
+                    axisLine: { lineStyle: { color: '#fff' } },
+                    axisLabel: { 
+                        color: '#fff',
+                        formatter: function(value) {
+                            const date = new Date(value);
+                            return `${date.getMonth()+1}/${date.getDate()} ${date.getHours()}:${date.getMinutes().toString().padStart(2,'0')}`;
+                        }
+                    },
+                    splitLine: { lineStyle: { color: 'rgba(255,255,255,0.1)' } }
+                },
+                yAxis: {
+                    type: 'value',
+                    name: '在线人数',
+                    axisLine: { show: false },
+                    axisLabel: { color: '#fff' },
+                    splitLine: { lineStyle: { color: 'rgba(255,255,255,0.1)' } }
+                },
+                series: [{
+                    name: '在线人数',
+                    type: 'line',
+                    smooth: true,
+                    symbol: 'none',
+                    lineStyle: {
+                        color: '#00d9ff',
+                        width: 3
+                    },
+                    areaStyle: {
+                        color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                            { offset: 0, color: 'rgba(0,217,255,0.5)' },
+                            { offset: 1, color: 'rgba(0,217,255,0.0)' }
+                        ])
+                    },
+                    data: []
+                }]
+            };
+            
+            chart.setOption(option);
+        }
+        
+        // 加载数据
+        async function loadData() {
+            try {
+                // 添加时间戳防止缓存
+                const response = await fetch(`data.json?t=${Date.now()}`);
+                if (!response.ok) throw new Error('数据加载失败');
+                
+                allData = await response.json();
+                updateDisplay();
+                updateChart();
+                
+                document.getElementById('lastUpdate').textContent = 
+                    new Date().toLocaleString('zh-CN');
+                    
+            } catch (error) {
+                console.error('加载数据失败:', error);
+                document.getElementById('mainChart').innerHTML = 
+                    '<div class="error">数据加载失败，请稍后重试<br><small>' + error.message + '</small></div>';
+            }
+        }
+        
+        // 更新显示信息
+        function updateDisplay() {
+            if (allData.length === 0) return;
+            
+            const latest = allData[allData.length - 1];
+            const maxOnline = Math.max(...allData.map(d => d.online));
+            
+            document.getElementById('currentOnline').textContent = latest.online;
+            document.getElementById('maxOnline').textContent = maxOnline;
+            document.getElementById('ping').textContent = latest.ping + 'ms';
+            document.getElementById('dataPoints').textContent = allData.length;
+        }
+        
+        // 更新图表
+        function updateChart() {
+            if (allData.length === 0) return;
+            
+            // 计算时间范围
+            const now = new Date();
+            const startTime = new Date(now.getTime() - currentRange * 24 * 60 * 60 * 1000);
+            
+            // 过滤数据
+            const filteredData = allData.filter(d => new Date(d.time) >= startTime);
+            
+            // 转换数据格式
+            const chartData = filteredData.map(d => ({
+                value: [new Date(d.time), d.online],
+                max: d.max
+            }));
+            
+            chart.setOption({
+                series: [{ data: chartData }],
+                xAxis: {
+                    min: startTime,
+                    max: now
+                }
+            });
+        }
+        
+        // 设置时间范围
+        function setRange(days) {
+            currentRange = days;
+            document.querySelectorAll('.controls button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            updateChart();
+        }
+        
+        // 刷新数据
+        function refreshData() {
+            loadData();
+        }
+        
+        // 窗口大小改变时重绘
+        window.addEventListener('resize', () => {
+            chart.resize();
+        });
+        
+        // 初始化
+        initChart();
+        loadData();
+        
+        // 每5分钟自动刷新
+        setInterval(loadData, 5 * 60 * 1000);
+    </script>
+</body>
+</html>
