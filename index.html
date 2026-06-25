@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MC服务器在线监控 - 3天历史数据</title>
+    <title>MC服务器在线监控 - 末影阁 EnderNest</title>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
     <style>
         * {
@@ -14,10 +14,24 @@
         
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            /* 背景图片 */
+            background: url('https://mc.l-w.top/bg.jpg') center center / cover no-repeat fixed;
             color: #fff;
             min-height: 100vh;
             padding: 20px;
+            position: relative;
+        }
+        
+        /* 背景遮罩层 */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.3);
+            z-index: -1;
         }
         
         .container {
@@ -28,7 +42,14 @@
         header {
             text-align: center;
             margin-bottom: 30px;
-            padding: 20px;
+            padding: 30px 20px;
+            /* 毛玻璃效果 */
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
         }
         
         h1 {
@@ -37,42 +58,59 @@
             text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
         }
         
+        .subtitle {
+            font-size: 1em;
+            opacity: 0.9;
+            margin-bottom: 20px;
+        }
+        
         .server-info {
             display: flex;
             justify-content: center;
-            gap: 30px;
+            gap: 20px;
             flex-wrap: wrap;
             margin-top: 20px;
         }
         
         .info-card {
-            background: rgba(255,255,255,0.1);
-            backdrop-filter: blur(10px);
-            padding: 20px 30px;
+            /* 毛玻璃效果 */
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            padding: 25px 35px;
             border-radius: 15px;
             text-align: center;
             min-width: 150px;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+            transition: transform 0.3s;
+        }
+        
+        .info-card:hover {
+            transform: translateY(-5px);
         }
         
         .info-card h3 {
             font-size: 0.9em;
-            opacity: 0.8;
-            margin-bottom: 5px;
+            opacity: 0.85;
+            margin-bottom: 8px;
         }
         
         .info-card .value {
-            font-size: 2em;
+            font-size: 2.2em;
             font-weight: bold;
             color: #00d9ff;
         }
         
         .chart-container {
-            background: rgba(255,255,255,0.05);
-            backdrop-filter: blur(10px);
+            /* 毛玻璃效果 - 主要修改 */
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
             border-radius: 20px;
             padding: 30px;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
             margin-bottom: 20px;
         }
         
@@ -85,15 +123,18 @@
             display: flex;
             justify-content: center;
             gap: 15px;
-            margin-bottom: 20px;
+            margin-bottom: 25px;
             flex-wrap: wrap;
         }
         
         button {
-            background: rgba(255,255,255,0.2);
-            border: 2px solid rgba(255,255,255,0.3);
+            /* 毛玻璃按钮 */
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 2px solid rgba(255, 255, 255, 0.3);
             color: #fff;
-            padding: 10px 25px;
+            padding: 12px 30px;
             border-radius: 25px;
             cursor: pointer;
             font-size: 1em;
@@ -101,7 +142,7 @@
         }
         
         button:hover, button.active {
-            background: rgba(255,255,255,0.4);
+            background: rgba(255, 255, 255, 0.3);
             border-color: #fff;
             transform: translateY(-2px);
         }
@@ -113,17 +154,28 @@
         }
         
         .error {
-            background: rgba(255,0,0,0.2);
-            padding: 20px;
-            border-radius: 10px;
+            /* 错误提示框 - 也使用毛玻璃 */
+            background: rgba(255, 100, 100, 0.2);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            padding: 25px;
+            border-radius: 15px;
             text-align: center;
             margin: 20px 0;
+            border: 1px solid rgba(255, 100, 100, 0.3);
         }
         
         footer {
             text-align: center;
             margin-top: 30px;
-            opacity: 0.7;
+            padding: 20px;
+            /* 毛玻璃效果 */
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border-radius: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            opacity: 0.9;
             font-size: 0.9em;
         }
         
@@ -132,6 +184,7 @@
             #mainChart { height: 350px; }
             .info-card { min-width: 120px; padding: 15px 20px; }
             .info-card .value { font-size: 1.5em; }
+            .chart-container { padding: 20px; }
         }
     </style>
 </head>
@@ -139,7 +192,7 @@
     <div class="container">
         <header>
             <h1>🎮 MC服务器在线监控</h1>
-            <p>实时查看服务器状态与3天历史数据</p>
+            <p class="subtitle">实时查看服务器状态与3天历史数据</p>
             <div class="server-info">
                 <div class="info-card">
                     <h3>当前在线</h3>
@@ -150,8 +203,8 @@
                     <div class="value" id="maxOnline">-</div>
                 </div>
                 <div class="info-card">
-                    <h3>延迟</h3>
-                    <div class="value" id="ping">-</div>
+                    <h3>服务器状态</h3>
+                    <div class="value" id="serverStatus">-</div>
                 </div>
                 <div class="info-card">
                     <h3>数据点</h3>
@@ -172,7 +225,7 @@
         
         <footer>
             <p>数据每5分钟自动更新 | 最后更新: <span id="lastUpdate">-</span></p>
-            <p>服务器地址: mc.l-w.top</p>
+            <p>服务器地址: <strong>mc.l-w.top</strong></p>
         </footer>
     </div>
 
@@ -194,9 +247,9 @@
                     textStyle: { color: '#fff' },
                     formatter: function(params) {
                         const data = params[0];
-                        return `<strong>${data.name}</strong><br/>` +
-                               `在线人数: ${data.value[1]}<br/>` +
-                               `最大在线: ${data.data.max}`;
+                        const date = new Date(data.value[0]);
+                        return `<strong>${date.toLocaleString('zh-CN')}</strong><br/>` +
+                               `在线人数: ${data.value[1]}`;
                     }
                 },
                 grid: {
@@ -207,9 +260,9 @@
                 },
                 xAxis: {
                     type: 'time',
-                    axisLine: { lineStyle: { color: '#fff' } },
+                    axisLine: { lineStyle: { color: 'rgba(255,255,255,0.8)' } },
                     axisLabel: { 
-                        color: '#fff',
+                        color: 'rgba(255,255,255,0.9)',
                         formatter: function(value) {
                             const date = new Date(value);
                             return `${date.getMonth()+1}/${date.getDate()} ${date.getHours()}:${date.getMinutes().toString().padStart(2,'0')}`;
@@ -221,7 +274,7 @@
                     type: 'value',
                     name: '在线人数',
                     axisLine: { show: false },
-                    axisLabel: { color: '#fff' },
+                    axisLabel: { color: 'rgba(255,255,255,0.9)' },
                     splitLine: { lineStyle: { color: 'rgba(255,255,255,0.1)' } }
                 },
                 series: [{
@@ -249,11 +302,27 @@
         // 加载数据
         async function loadData() {
             try {
-                // 添加时间戳防止缓存
-                const response = await fetch(`data.json?t=${Date.now()}`);
-                if (!response.ok) throw new Error('数据加载失败');
+                const cacheBuster = `?t=${Date.now()}`;
+                const dataUrl = 'data.json' + cacheBuster;
+                
+                console.log('正在加载数据:', dataUrl);
+                
+                const response = await fetch(dataUrl);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP 错误: ${response.status} ${response.statusText}`);
+                }
                 
                 allData = await response.json();
+                console.log('数据加载成功:', allData);
+                
+                if (allData.length === 0) {
+                    console.warn('数据数组为空');
+                    document.getElementById('mainChart').innerHTML = 
+                        '<div class="error">暂无数据，等待数据采集...</div>';
+                    return;
+                }
+                
                 updateDisplay();
                 updateChart();
                 
@@ -262,48 +331,56 @@
                     
             } catch (error) {
                 console.error('加载数据失败:', error);
+                
+                let errorMessage = error.message;
+                if (error.name === 'SyntaxError') {
+                    errorMessage = 'JSON 格式错误';
+                } else if (error.message.includes('404')) {
+                    errorMessage = '数据文件不存在 (data.json)';
+                }
+                
                 document.getElementById('mainChart').innerHTML = 
-                    '<div class="error">数据加载失败，请稍后重试<br><small>' + error.message + '</small></div>';
+                    `<div class="error">
+                        数据加载失败，请稍后重试<br>
+                        <small>错误: ${errorMessage}</small><br>
+                        <small>时间: ${new Date().toLocaleString('zh-CN')}</small>
+                    </div>`;
             }
         }
         
         // 更新显示信息
-        // 在 updateDisplay() 函数中
-function updateDisplay() {
-    if (allData.length === 0) return;
-    
-    const latest = allData[allData.length - 1];
-    const maxOnline = Math.max(...allData.map(d => d.online));
-    
-    document.getElementById('currentOnline').textContent = latest.online;
-    document.getElementById('maxOnline').textContent = maxOnline;
-    document.getElementById('ping').textContent = latest.is_online ? '在线' : '离线';
-    document.getElementById('dataPoints').textContent = allData.length;
-    
-    // 更新服务器状态指示器
-    const statusIndicator = document.querySelector('.info-card:nth-child(3) .value');
-    if (latest.is_online) {
-        statusIndicator.style.color = '#22c55e'; // 绿色
-    } else {
-        statusIndicator.style.color = '#ef4444'; // 红色
-    }
-}
+        function updateDisplay() {
+            if (allData.length === 0) return;
+            
+            const latest = allData[allData.length - 1];
+            const maxOnline = Math.max(...allData.map(d => d.online));
+            
+            document.getElementById('currentOnline').textContent = latest.online;
+            document.getElementById('maxOnline').textContent = maxOnline;
+            document.getElementById('dataPoints').textContent = allData.length;
+            
+            // 更新服务器状态
+            const statusEl = document.getElementById('serverStatus');
+            if (latest.is_online) {
+                statusEl.textContent = '在线';
+                statusEl.style.color = '#22c55e';
+            } else {
+                statusEl.textContent = '离线';
+                statusEl.style.color = '#ef4444';
+            }
+        }
         
         // 更新图表
         function updateChart() {
             if (allData.length === 0) return;
             
-            // 计算时间范围
             const now = new Date();
             const startTime = new Date(now.getTime() - currentRange * 24 * 60 * 60 * 1000);
             
-            // 过滤数据
             const filteredData = allData.filter(d => new Date(d.time) >= startTime);
             
-            // 转换数据格式
             const chartData = filteredData.map(d => ({
-                value: [new Date(d.time), d.online],
-                max: d.max
+                value: [new Date(d.time), d.online]
             }));
             
             chart.setOption({
