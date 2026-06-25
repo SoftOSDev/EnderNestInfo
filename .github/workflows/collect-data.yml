@@ -1,0 +1,54 @@
+name: Collect MC Server Data
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'  # 每5分钟执行一次
+  workflow_dispatch:       # 允许手动触发
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        
+      - name: Fetch Server Data
+        run: |
+          # 获取当前时间
+          TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          
+          # 调用你的API
+          RESPONSE=$(curl -s 'https://list.mczfw.com/api/mc.l-w.top')
+          
+          # 提取数据
+          ONLINE=$(echo $RESPONSE | jq -r '.p // 0')
+          MAX=$(echo $RESPONSE | jq -r '.mp // 0')
+          PING=$(echo $RESPONSE | jq -r '.ping // 0')
+          
+          # 创建新数据条目
+          NEW_DATA="{\"time\":\"$TIME\",\"online\":$ONLINE,\"max\":$MAX,\"ping\":$PING}"
+          
+          # 读取现有数据或创建空数组
+          if [ -f data.json ]; then
+            OLD_DATA=$(cat data.json)
+          else
+            OLD_DATA="[]"
+          fi
+          
+          # 合并数据并保留最近3天的数据（约864条，每5分钟一条）
+          echo "$OLD_DATA" | jq --argjson new "$NEW_DATA" '
+            [. + [$new] | 
+             sort_by(.time) | 
+             .[-864:]]
+          ' > data.json
+          
+          # 显示数据
+          cat data.json
+          
+      - name: Commit and Push
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add data.json
+          git commit -m "Update server data at $(date)" || exit 0
+          git push
