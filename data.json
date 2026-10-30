@@ -390,5 +390,13 @@
     "is_online": false,
     "version": "Offline",
     "hostname": "mc.l-w.top"
+  },
+  {
+    "time": "2026-10-30T23:24:17Z",
+    "online": 0,
+    "max": 0,
+    "is_online": false,
+    "version": "Offline",
+    "hostname": "mc.l-w.top"
   }
 ]
