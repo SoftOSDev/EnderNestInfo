@@ -870,5 +870,13 @@
     "is_online": true,
     "version": "EnderNest 1.21.x 1.21.11",
     "hostname": "fwq.l-w.top"
+  },
+  {
+    "time": "2026-11-14T23:39:04Z",
+    "online": 0,
+    "max": 69,
+    "is_online": true,
+    "version": "EnderNest 1.21.x 1.21.11",
+    "hostname": "fwq.l-w.top"
   }
 ]
