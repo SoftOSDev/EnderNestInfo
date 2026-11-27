@@ -1190,5 +1190,13 @@
     "is_online": true,
     "version": "1.21.8",
     "hostname": "fwq.l-w.top"
+  },
+  {
+    "time": "2026-11-27T08:39:46Z",
+    "online": 0,
+    "max": 2026,
+    "is_online": true,
+    "version": "1.21.8",
+    "hostname": "fwq.l-w.top"
   }
 ]
